@@ -26,10 +26,18 @@ class AssignmentController extends Controller
         return response()->json(Assignment::all());
     }
 
-    public function store(Request $request)
-    {
-        $assignment = Assignment::create($request->all());
-        return response()->json($assignment, 201);
+    public function store(Request $request) {
+        $assignment = Assignment::updateOrCreate(
+            [
+                'student_id' => $request->student_id, 
+                'title' => $request->title
+            ],
+            [
+                'status' => $request->status
+            ]
+        );
+    
+        return response()->json(['message' => 'Assignment saved successfully!', 'assignment' => $assignment], 201);
     }
 
     public function updateAssignmentStatus(Request $request)
@@ -60,24 +68,24 @@ class AssignmentController extends Controller
     }
 
 
-    public function getAssignmentsByStudent($student_id): JsonResponse
-{
-    $assignments = Assignment::where('student_id', $student_id)->get();
+//     public function getAssignmentsByStudent($student_id): JsonResponse
+// {
+//     $assignments = Assignment::where('student_id', $student_id)->get();
 
-    if ($assignments->isEmpty()) {
-        return response()->json([
-            'status' => false,
-            'message' => 'No assignments found for this student',
-            'data' => []
-        ], 404); // Not Found
-    }
+//     if ($assignments->isEmpty()) {
+//         return response()->json([
+//             'status' => false,
+//             'message' => 'No assignments found for this student',
+//             'data' => []
+//         ], 404); // Not Found
+//     }
 
-    return response()->json([
-        'status' => true,
-        'message' => 'Assignments retrieved successfully',
-        'data' => $assignments
-    ], 200); // OK
-}
+//     return response()->json([
+//         'status' => true,
+//         'message' => 'Assignments retrieved successfully',
+//         'data' => $assignments
+//     ], 200); // OK
+// }
 
 
     /**
@@ -113,4 +121,92 @@ class AssignmentController extends Controller
     {
         //
     }
+
+    // public function getAssignmentsByStudent($student_id) {
+    //     $assignments = Assignment::where('student_id', $student_id)
+    //         ->with(['marks' => function ($query) {
+    //             $query->select('assignment_id', 'component_id', 'marks_obtained');
+    //         }])
+    //         ->get();
+
+    //     $assignments = $assignments->map(function ($assignment) {
+    //         $totalMarksObtained = $assignment->marks->sum('marks_obtained');
+    //         $grade = $this->calculateGrade($totalMarksObtained);
+
+    //         return [
+    //             'id' => $assignment->id,
+    //             'student_id' => $assignment->student_id,
+    //             'title' => $assignment->title,
+    //             'status' => $assignment->status,
+    //             'total_marks_obtained' => $totalMarksObtained,
+    //             'grade' => $grade,
+    //             'marks' => $assignment->marks->map(function ($mark) {
+    //                 return [
+    //                     'component_id' => $mark->component_id,
+    //                     'marks_obtained' => $mark->marks_obtained
+    //                 ];
+    //             }),
+    //         ];
+    //     });
+
+    //     return response()->json([
+    //         'student_id' => $student_id,
+    //         'assignments' => $assignments
+    //     ], 200);
+    // }
+
+    public function getAssignmentsByStudent($student_id)
+{
+    $assignments = Assignment::where('student_id', $student_id)
+        ->with(['marks' => function ($query) {
+            $query->select('assignment_id', 'component_id', 'marks_obtained');
+        }])
+        ->get();
+
+    $assignments->transform(function ($assignment) {
+        $total_marks = $assignment->marks->sum('marks_obtained'); // Sum of marks obtained
+
+        // Grade calculation logic based on total marks
+        $grade = $this->calculateGrade($total_marks);
+
+        return [
+            'id' => $assignment->id,
+            'student_id' => $assignment->student_id,
+            'title' => $assignment->title,
+            'status' => $assignment->status,
+            'total_marks_obtained' => $total_marks,
+            'grade' => $grade,
+            'marks' => $assignment->marks->map(function ($mark) {
+                return [
+                    'component_id' => $mark->component_id,
+                    'marks_obtained' => $mark->marks_obtained,
+                ];
+            }),
+        ];
+    });
+
+    return response()->json([
+        'student_id' => $student_id,
+        'assignments' => $assignments
+    ], 200);
+}
+
+// Helper function to calculate grade
+private function calculateGrade($total_marks)
+{
+    if ($total_marks >= 95) {
+        return 'A+';
+    } elseif ($total_marks >= 85) {
+        return 'A';
+    } elseif ($total_marks >= 75) {
+        return 'B+';
+    } elseif ($total_marks >= 65) {
+        return 'B';
+    } elseif ($total_marks >= 50) {
+        return 'C';
+    } else {
+        return 'F';
+    }
+}
+
 }

@@ -7,12 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Mark extends Model {
     use HasFactory;
-    
-    protected $fillable = ['student_id', 'assignment_id', 'component_id', 'marks_obtained'];
 
-    public function student() {
-        return $this->belongsTo(Student::class);
-    }
+    protected $fillable = ['student_id', 'assignment_id', 'component_id', 'marks_obtained'];
 
     public function assignment() {
         return $this->belongsTo(Assignment::class);
@@ -20,5 +16,8 @@ class Mark extends Model {
 
     public function component() {
         return $this->belongsTo(Component::class);
+    }
+    public function marks() {
+        return $this->hasMany(Mark::class, 'assignment_id');
     }
 }

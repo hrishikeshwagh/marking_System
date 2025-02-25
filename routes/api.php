@@ -32,4 +32,7 @@ Route::post('/marks', [MarkController::class, 'store']);
 Route::post('/update-assignment-status', [AssignmentController::class, 'updateAssignmentStatus']);
 Route::get('/assignments/{student_id}', [AssignmentController::class, 'getAssignmentsByStudent']);
 
+Route::post('/store-marks', [MarkController::class, 'storeMarks']);
+Route::get('/assignments/student/{student_id}', [AssignmentController::class, 'getAssignmentsByStudent']);
+
 

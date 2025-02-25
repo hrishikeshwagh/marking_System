@@ -7,6 +7,9 @@ use App\Models\Student;
 use App\Models\Assignment;
 use App\Models\Mark;
 use App\Models\Component;
+use Illuminate\Http\JsonResponse;
+use DB;
+use Illuminate\Support\Facades\Log;
 
 class MarkController extends Controller
 {
@@ -26,11 +29,7 @@ class MarkController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
-    {
-        $mark = Mark::create($request->all());
-        return response()->json($mark, 201);
-    }
+   
 
     /**
      * Display the specified resource.
@@ -61,8 +60,63 @@ class MarkController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function storeMarks(Request $request)
     {
-        //
+        DB::beginTransaction();
+    
+        try {
+            // Log received data
+            Log::info('Received Data:', $request->all());
+    
+            // Loop through marks and insert each component's marks
+            foreach ($request->marks as $markData) {
+                Mark::create([
+                    'student_id' => $request->student_id,
+                    'assignment_id' => $request->assignment_id,
+                    'component_id' => $markData['component_id'],
+                    'marks_obtained' => $markData['marks_obtained'],
+                    'grade' => null, // Grade calculation will be added later
+                ]);
+            }
+    
+            DB::commit();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Marks added successfully',
+                'all_marks' => Mark::where('student_id', $request->student_id)
+                                   ->where('assignment_id', $request->assignment_id)
+                                   ->get()
+            ], 201);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error inserting marks: ' . $e->getMessage());
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving marks',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
+    private function calculateGrade($percentage)
+    {
+        if ($percentage >= 95) return 'A+';
+        if ($percentage >= 85) return 'A';
+        if ($percentage >= 75) return 'B+';
+        if ($percentage >= 65) return 'B';
+        if ($percentage >= 50) return 'C';
+        return 'F';
+    }
+    
+//     public function storeMarks(Request $request)
+// {
+//     Log::info('Received Data:', $request->all());
+
+//     return response()->json([
+//         'message' => 'Check logs'
+//     ]);
+// }
 }
