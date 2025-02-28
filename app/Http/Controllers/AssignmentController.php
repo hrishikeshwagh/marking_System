@@ -42,31 +42,44 @@ class AssignmentController extends Controller
 
     public function updateAssignmentStatus(Request $request)
     {
-
-        //die("-----------");
         $request->validate([
             'student_id' => 'required|integer|exists:students,id',
             'assignment_id' => 'required|integer|exists:assignments,id',
             'status' => 'required|string|in:pending,in-progress,completed',
         ]);
-
+    
         $assignment = Assignment::where('id', $request->assignment_id)
                                 ->where('student_id', $request->student_id)
                                 ->first();
-
+    
         if (!$assignment) {
             return response()->json(['message' => 'Assignment not found'], 404);
         }
+    
+        // Check if the status is being set to "completed"
+        if ($request->status === 'completed') {
+            // Ensure all marks are filled
+            $allMarksFilled = $assignment->marks()->whereNull('marks_obtained')->doesntExist();
 
+        print_r($allMarksFilled);die;
+    
+            if (!$allMarksFilled) {
+                return response()->json([
+                    'message' => 'All marks must be filled before marking as completed.'
+                ], 400);
+            }
+        }
+    
+        // Update the assignment status
         $assignment->status = $request->status;
         $assignment->save();
-
+    
         return response()->json([
             'message' => 'Assignment status updated successfully',
             'assignment' => $assignment
         ]);
     }
-
+        
 
 //     public function getAssignmentsByStudent($student_id): JsonResponse
 // {
@@ -163,6 +176,11 @@ class AssignmentController extends Controller
         }])
         ->get();
 
+        $assignments->each(function ($assignment) {
+            $assignment->marks = collect($assignment->marks)->unique('component_id')->values();
+        });
+        
+
     $assignments->transform(function ($assignment) {
         $total_marks = $assignment->marks->sum('marks_obtained'); // Sum of marks obtained
 
@@ -174,7 +192,7 @@ class AssignmentController extends Controller
             'student_id' => $assignment->student_id,
             'title' => $assignment->title,
             'status' => $assignment->status,
-            'total_marks_obtained' => $total_marks,
+           // 'total_marks_obtained' => $total_marks,
             'grade' => $grade,
             'marks' => $assignment->marks->map(function ($mark) {
                 return [
