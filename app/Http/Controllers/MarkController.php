@@ -61,45 +61,57 @@ class MarkController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function storeMarks(Request $request)
-    {
-        DB::beginTransaction();
-    
-        try {
-            // Log received data
-            Log::info('Received Data:', $request->all());
-    
-            // Loop through marks and insert each component's marks
-            foreach ($request->marks as $markData) {
-                Mark::create([
-                    'student_id' => $request->student_id,
-                    'assignment_id' => $request->assignment_id,
-                    'component_id' => $markData['component_id'],
-                    'marks_obtained' => $markData['marks_obtained'],
-                    'grade' => null, // Grade calculation will be added later
-                ]);
-            }
-    
-            DB::commit();
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'Marks added successfully',
-                'all_marks' => Mark::where('student_id', $request->student_id)
-                                   ->where('assignment_id', $request->assignment_id)
-                                   ->get()
-            ], 201);
-    
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error inserting marks: ' . $e->getMessage());
-    
-            return response()->json([
-                'success' => false,
-                'message' => 'Error saving marks',
-                'error' => $e->getMessage()
-            ], 500);
+{
+    DB::beginTransaction();
+
+    try {
+        // Log received data
+        Log::info('Received Data:', $request->all());
+
+        // Insert marks for each component
+        foreach ($request->marks as $markData) {
+            Mark::create([
+                'student_id' => $request->student_id,
+                'assignment_id' => $request->assignment_id,
+                'component_id' => $markData['component_id'],
+                'marks_obtained' => $markData['marks_obtained'],
+                'grade' => null, // Grade calculation will be added later
+            ]);
         }
+
+        // Check if all marks are filled
+        $assignment = Assignment::find($request->assignment_id);
+        $allMarksFilled = $assignment->marks()->whereNull('marks_obtained')->doesntExist();
+
+        // Determine new status
+        $newStatus = $allMarksFilled ? 'completed' : 'in-progress';
+
+        // Update assignment status
+        $assignment->update(['status' => $newStatus]);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Marks added successfully',
+            'assignment_status' => $newStatus,
+            'all_marks' => Mark::where('student_id', $request->student_id)
+                               ->where('assignment_id', $request->assignment_id)
+                               ->get()
+        ], 201);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error inserting marks: ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error saving marks',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
 
     private function calculateGrade($percentage)
     {

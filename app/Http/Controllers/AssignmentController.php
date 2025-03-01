@@ -7,6 +7,8 @@ use App\Models\Student;
 use App\Models\Assignment;
 use App\Models\Mark;
 use App\Models\Component;
+use App\Models\CommonAssignment;
+
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 
@@ -225,6 +227,33 @@ private function calculateGrade($total_marks)
     } else {
         return 'F';
     }
+}
+
+// ✅ Fetch all common assignments
+public function getCommonAssignments()
+{
+    $assignments = CommonAssignment::all();
+    return response()->json($assignments);
+}
+
+// ✅ Create a new common assignment
+public function createCommonAssignment(Request $request)
+{
+    $request->validate([
+        'title' => 'required|string',
+        'description' => 'nullable|string',
+    ]);
+
+    $assignment = CommonAssignment::create([
+        'title' => $request->title,
+        'description' => $request->description,
+        //'status' => 'pending', // Default status
+    ]);
+
+    return response()->json([
+        'message' => 'Common assignment created successfully!',
+        'assignment' => $assignment
+    ], 201);
 }
 
 }

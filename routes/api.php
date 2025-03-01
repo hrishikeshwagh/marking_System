@@ -63,3 +63,7 @@ Route::get('/test-password', function () {
 });
 
 
+Route::get('/common-assignments', [AssignmentController::class, 'getCommonAssignments']);
+Route::post('/common-assignments', [AssignmentController::class, 'createCommonAssignment']);
+
+
